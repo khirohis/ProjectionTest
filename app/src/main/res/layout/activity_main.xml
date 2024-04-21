@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <variable
+            name="mainBindingHandler"
+            type="net.hogelab.android.projectiontest.MainBindingHandler" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity">
+
+        <Button
+            android:id="@+id/button_start_screen_capture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@string/title_start_screen_capture"
+            android:onClick="@{() -> mainBindingHandler.handleStartScreenCapture()}"
+            />
+
+        <Button
+            android:id="@+id/button_stop_screen_capture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/button_start_screen_capture"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@string/title_stop_screen_capture"
+            android:onClick="@{() -> mainBindingHandler.handleStopScreenCapture()}"
+            />
+
+        <Button
+            android:id="@+id/button_update_external_display_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/button_stop_screen_capture"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@string/title_update_external_display_count"
+            android:onClick="@{() -> mainBindingHandler.handleUpdateExternalDisplayCount()}"
+            />
+
+        <TextView
+            android:id="@+id/text_total_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/button_update_external_display_count"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/text_external_display_total_count"
+            android:text="@string/label_total_count"
+            />
+
+        <TextView
+            android:id="@+id/text_external_display_total_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/button_update_external_display_count"
+            app:layout_constraintStart_toEndOf="@id/text_total_count"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@{mainBindingHandler.externalDisplayTotalCount}"
+            />
+
+        <TextView
+            android:id="@+id/text_presentation_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/text_total_count"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/text_external_display_presentation_count"
+            android:text="@string/label_presentation_count"
+            />
+
+        <TextView
+            android:id="@+id/text_external_display_presentation_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/text_total_count"
+            app:layout_constraintStart_toEndOf="@id/text_presentation_count"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@{mainBindingHandler.externalDisplayPresentationCount}"
+            />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
