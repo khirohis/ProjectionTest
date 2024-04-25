@@ -11,6 +11,8 @@ public class MyApplication extends Application {
         Log.d(TAG, "onCreate");
         super.onCreate();
 
+        MyExecutor.init();
+
         ScreenCaptureManager.init(this);
 
         ScreenCaptureNotificationManager.init(this);

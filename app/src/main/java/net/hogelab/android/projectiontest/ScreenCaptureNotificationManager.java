@@ -81,6 +81,10 @@ public class ScreenCaptureNotificationManager {
                 .build();
     }
 
+    public void notify(int id, Notification notification) {
+        notificationManager.notify(id, notification);
+    }
+
 
     //--------------------------------------------------
     // private functions
@@ -95,7 +99,7 @@ public class ScreenCaptureNotificationManager {
                 MainActivity.createSettingIntent(context),
                 PendingIntent.FLAG_MUTABLE);
 
-        PendingIntent snapShotIntent = PendingIntent.getActivity(
+        PendingIntent snapShotIntent = PendingIntent.getService(
                 context,
                 0,
                 ScreenCaptureService.createSnapshotIntent(context),

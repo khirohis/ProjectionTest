@@ -3,6 +3,7 @@ package net.hogelab.android.projectiontest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.os.Bundle;
@@ -31,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
     //--------------------------------------------------
 
     public static Intent createSettingIntent(Context context) {
+        Log.d(TAG, "createSettingIntent");
+
         return new Intent(context, MainActivity.class);
     }
 
@@ -43,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private final MainBindingHandler mainBindingHandler;
 
     private ActivityResultLauncher<Intent> requestPermissionLauncher;
+
+    private final ScreenCaptureManager.Callback screenCaptureCallback;
 
 
     //--------------------------------------------------
@@ -72,6 +77,10 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onResume");
         super.onResume();
 
+        ScreenCaptureManager.getInstance().addCallback(screenCaptureCallback);
+        // TODO: can force update?
+        mainBindingHandler.capturing.setValue(ScreenCaptureManager.getInstance().getCapturing());
+
         mainBindingHandler.externalDisplayTotalCount.setValue("-");
         mainBindingHandler.externalDisplayPresentationCount.setValue("-");
     }
@@ -80,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         Log.d(TAG, "onPause");
         super.onPause();
+
+        ScreenCaptureManager.getInstance().removeCallback(screenCaptureCallback);
     }
 
     @Override
@@ -87,7 +98,6 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
 
-        ScreenCaptureManager.getInstance().setCaptureStateListener(null);
         binding.setMainBindingHandler(null);
     }
 
@@ -95,6 +105,17 @@ public class MainActivity extends AppCompatActivity {
     //--------------------------------------------------
     // private functions
     //--------------------------------------------------
+
+    private void onCapturingChanged(boolean isCapturing) {
+        Log.d(TAG, "onCapturingChanged");
+
+        mainBindingHandler.capturing.setValue(isCapturing);
+    }
+
+    private void onImageAvailableChanged(boolean isCapturing) {
+        Log.d(TAG, "onImageAvailableChanged");
+    }
+
 
     private void startScreenCapture() {
         Log.d(TAG, "startScreenCapture");
@@ -121,7 +142,6 @@ public class MainActivity extends AppCompatActivity {
                     size.x, size.y, displayMetrics.densityDpi);
         }
     }
-
 
     private void stopScreenCapture() {
         Log.d(TAG, "stopScreenCapture");
@@ -165,6 +185,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleUpdateExternalDisplayCount() {
                 MainActivity.this.updateExternalDisplayCount();
+            }
+        };
+    }
+
+    // ScreenCaptureManager.Callback Overrides
+    {
+        screenCaptureCallback = new ScreenCaptureManager.Callback() {
+
+            @Override
+            public void onCapturingChanged(boolean isCapturing) {
+                MainActivity.this.onCapturingChanged(isCapturing);
+            }
+
+            @Override
+            public void onImageAvailableChanged(boolean isImageAvailable) {
+                MainActivity.this.onImageAvailableChanged(isImageAvailable);
             }
         };
     }

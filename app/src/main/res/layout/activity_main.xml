@@ -24,6 +24,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:text="@string/title_start_screen_capture"
+            android:enabled="@{!mainBindingHandler.capturing}"
             android:onClick="@{() -> mainBindingHandler.handleStartScreenCapture()}"
             />
 
@@ -35,6 +36,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:text="@string/title_stop_screen_capture"
+            android:enabled="@{mainBindingHandler.capturing}"
             android:onClick="@{() -> mainBindingHandler.handleStopScreenCapture()}"
             />
 
