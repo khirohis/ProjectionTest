@@ -1,13 +1,14 @@
 package net.hogelab.android.projectiontest;
 
-import android.app.Activity;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.IBinder;
 import android.util.Log;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 
 
@@ -34,6 +35,7 @@ public class ScreenCaptureService extends Service {
     // static functions
     //--------------------------------------------------
 
+    @MainThread
     public static Intent createSnapshotIntent(Context context) {
         Log.d(TAG, "createSnapshotIntent");
 
@@ -43,6 +45,7 @@ public class ScreenCaptureService extends Service {
         return intent;
     }
 
+    @MainThread
     public static void startService(Context context, int resultCode, Intent resultData,
                                     int width, int height, int densityDpi) {
         Log.d(TAG, "startService");
@@ -57,6 +60,7 @@ public class ScreenCaptureService extends Service {
         context.startForegroundService(intent);
     }
 
+    @MainThread
     public static void stopService(Context context) {
         Log.d(TAG, "stopService");
 
@@ -67,9 +71,17 @@ public class ScreenCaptureService extends Service {
 
 
     //--------------------------------------------------
+    // member variables
+    //--------------------------------------------------
+
+    private final ScreenCaptureManager.Callback screenCaptureCallback;
+
+
+    //--------------------------------------------------
     // override functions
     //--------------------------------------------------
 
+    @MainThread
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -77,12 +89,16 @@ public class ScreenCaptureService extends Service {
         throw new UnsupportedOperationException("Not implemented.");
     }
 
+    @MainThread
     @Override
     public void onCreate() {
         Log.d(TAG, "onCreate");
         super.onCreate();
+
+        ScreenCaptureManager.getInstance().addCallback(screenCaptureCallback);
     }
 
+    @MainThread
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand");
@@ -108,10 +124,13 @@ public class ScreenCaptureService extends Service {
         return START_NOT_STICKY;
     }
 
+    @MainThread
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
+
+        ScreenCaptureManager.getInstance().removeCallback(screenCaptureCallback);
     }
 
 
@@ -119,6 +138,7 @@ public class ScreenCaptureService extends Service {
     // private functions
     //--------------------------------------------------
 
+    @MainThread
     private void onCommandActionStart(Intent intent) {
         Notification notification = ScreenCaptureNotificationManager.getInstance()
                 .createNotification(this);
@@ -132,6 +152,7 @@ public class ScreenCaptureService extends Service {
                 resultCode, intent, width, height, densityDpi);
     }
 
+    @MainThread
     private void onCommandActionStop() {
         ScreenCaptureManager.getInstance().stopScreenCapture();
 
@@ -139,7 +160,41 @@ public class ScreenCaptureService extends Service {
         stopSelf(SERVICE_ID);
     }
 
+    @MainThread
     private void onCommandActionDoSnapshot() {
         Log.d(TAG, "ACTION_DO_SNAPSHOT");
+
+        Bitmap bitmap = ScreenCaptureManager.getInstance().getCapturedImage();
+        if (bitmap != null) {
+            Notification notification = ScreenCaptureNotificationManager.getInstance()
+                    .createNotification(this, bitmap);
+            ScreenCaptureNotificationManager.getInstance().notify(SERVICE_ID, notification);
+        }
+    }
+
+
+    public void onCapturingChanged(boolean isCapturing) {
+        Log.d(TAG, "onCapturingChanged: " + isCapturing);
+    }
+
+    public void onImageAvailableChanged(boolean isImageAvailable) {
+        Log.d(TAG, "onImageAvailableChanged: " + isImageAvailable);
+    }
+
+
+    // ScreenCaptureManager.Callback Overrides
+    {
+        screenCaptureCallback = new ScreenCaptureManager.Callback() {
+
+            @Override
+            public void onCapturingChanged(boolean isCapturing) {
+                ScreenCaptureService.this.onCapturingChanged(isCapturing);
+            }
+
+            @Override
+            public void onImageAvailableChanged(boolean isImageAvailable) {
+                ScreenCaptureService.this.onImageAvailableChanged(isImageAvailable);
+            }
+        };
     }
 }

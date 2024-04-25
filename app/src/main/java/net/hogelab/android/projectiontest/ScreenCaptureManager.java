@@ -2,6 +2,7 @@ package net.hogelab.android.projectiontest;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -9,10 +10,12 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Looper;
 import android.util.Log;
+
+import androidx.annotation.MainThread;
+
+import java.util.LinkedList;
+import java.util.List;
 
 
 //--------------------------------------------------
@@ -26,8 +29,9 @@ public class ScreenCaptureManager {
     // callback interface
     //--------------------------------------------------
 
-    public interface CaptureStateListener {
-        void onCaptureStateChanged(boolean isCapturing);
+    public interface Callback {
+        void onCapturingChanged(boolean isCapturing);
+        void onImageAvailableChanged(boolean isImageAvailable);
     }
 
 
@@ -52,12 +56,11 @@ public class ScreenCaptureManager {
     // member variables
     //--------------------------------------------------
 
-    private boolean captureState;
-    private CaptureStateListener captureStateListener;
+    private boolean isCapturing;
+    private boolean isImageAvailable;
+    private Bitmap capturedImage;
 
-    private final Handler mainHandler;
-    private final HandlerThread captureHandlerThread;
-    private final Handler captureHandler;
+    private final List<Callback> callbacks;
 
     private final MediaProjectionManager mediaProjectionManager;
     private final MediaProjection.Callback mediaProjectionCallback;
@@ -68,7 +71,7 @@ public class ScreenCaptureManager {
 
     private int pixelFormat = PixelFormat.RGBA_8888;
     private int maxImages = 2;
-    private float scaleFactor = 0.1f;
+    private float scaleFactor = 0.05f;
 
     private int captureWidth;
     private int captureHeight;
@@ -82,10 +85,7 @@ public class ScreenCaptureManager {
     private ScreenCaptureManager(Context context) {
         Log.d(TAG, "constructor");
 
-        mainHandler = new Handler(Looper.getMainLooper());
-        captureHandlerThread = new HandlerThread("capture_handler_thread");
-        captureHandlerThread.start();
-        captureHandler = new Handler(captureHandlerThread.getLooper());
+        callbacks = new LinkedList<>();
 
         mediaProjectionManager =
                 (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -96,63 +96,95 @@ public class ScreenCaptureManager {
     // public functions
     //--------------------------------------------------
 
-    public synchronized void setDefaultPixelFormat(int pixelFormat) {
+    @MainThread
+    public boolean getCapturing() {
+        Log.d(TAG, "getCaptureState: " + isCapturing);
+
+        return isCapturing;
+    }
+
+    @MainThread
+    public boolean getImageAvailable() {
+        Log.d(TAG, "getImageAvailable: " + isImageAvailable);
+
+        return isImageAvailable;
+    }
+
+    @MainThread
+    public Bitmap getCapturedImage() {
+        Log.d(TAG, "getCapturedImage");
+
+        return capturedImage;
+    }
+
+    @MainThread
+    public void addCallback(Callback callback) {
+        callbacks.add(callback);
+    }
+
+    @MainThread
+    public void removeCallback(Callback callback) {
+        callbacks.remove(callback);
+    }
+
+
+    @MainThread
+    public void setDefaultPixelFormat(int pixelFormat) {
         this.pixelFormat = pixelFormat;
     }
 
-    public synchronized void setDefaultMaxImages(int maxImages) {
+    @MainThread
+    public void setDefaultMaxImages(int maxImages) {
         this.maxImages = maxImages;
     }
 
-    public synchronized void setDefaultScaleFactor(float scaleFactor) {
+    @MainThread
+    public void setDefaultScaleFactor(float scaleFactor) {
         this.scaleFactor = scaleFactor;
     }
 
 
-    public synchronized boolean getCaptureState() {
-        Log.d(TAG, "getCaptureState: " + captureState);
-
-        return captureState;
-    }
-
-    public synchronized void setCaptureStateListener(CaptureStateListener listener) {
-        Log.d(TAG, "setCaptureStateListener");
-
-        captureStateListener = listener;
-    }
-
-
+    @MainThread
     public Intent createScreenCaptureIntent() {
         Log.d(TAG, "createScreenCaptureIntent");
 
         return mediaProjectionManager.createScreenCaptureIntent();
     }
 
+    @MainThread
     public void startScreenCapture(int resultCode, Intent resultData,
                                    int width, int height, int densityDpi) {
         Log.d(TAG, "startScreenCapture");
 
-        captureHandler.post(() -> {
-            if (!getCaptureState()) {
+        if (!getCapturing()) {
+            setCapturing(true);
+
+            MyExecutor.postScreenCaptureHandler(() -> {
                 startScreenCaptureInner(
                         resultCode, resultData, width, height, densityDpi);
-            }
-        });
-
-        setCaptureState(true);
+            });
+        }
     }
 
 
+    @MainThread
     public void stopScreenCapture() {
         Log.d(TAG, "stopScreenCapture");
 
-        captureHandler.post(() -> {
-            if (getCaptureState()) {
-                stopScreenCaptureInner();
-            }
-        });
+        if (getCapturing()) {
+            setCapturing(false);
 
-        setCaptureState(false);
+            MyExecutor.getScreenCaptureHandler().post(() -> {
+                stopScreenCaptureInner();
+            });
+        }
+    }
+
+
+    @MainThread
+    public void doSnapshot() {
+        if (isImageAvailable) {
+        }
     }
 
 
@@ -160,16 +192,29 @@ public class ScreenCaptureManager {
     // private functions
     //--------------------------------------------------
 
-    private synchronized void setCaptureState(boolean newState) {
-        Log.d(TAG, "setCaptureState: " + newState);
+    @MainThread
+    private void setCapturing(boolean newState) {
+        Log.d(TAG, "setCapturing: " + newState);
 
-        if (captureState != newState) {
-            captureState = newState;
-            mainHandler.post(() -> {
-                if (captureStateListener != null) {
-                    captureStateListener.onCaptureStateChanged(newState);
-                }
-            });
+        if (isCapturing != newState) {
+            isCapturing = newState;
+
+            for (Callback callback : callbacks) {
+                callback.onCapturingChanged(isCapturing);
+            }
+        }
+    }
+
+    @MainThread
+    private void setImageAvailable(boolean newState) {
+        Log.d(TAG, "setImageAvailable: " + newState);
+
+        if (isImageAvailable != newState) {
+            isImageAvailable = newState;
+
+            for (Callback callback : callbacks) {
+                callback.onImageAvailableChanged(isImageAvailable);
+            }
         }
     }
 
@@ -182,13 +227,14 @@ public class ScreenCaptureManager {
         captureHeight = (int) (height * scaleFactor);
         captureDensityDpi = densityDpi;
 
+        mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData);
+        mediaProjection.registerCallback(mediaProjectionCallback, null);
+
         ImageReader imageReader = ImageReader.newInstance(
                 captureWidth, captureHeight,
                 pixelFormat, maxImages);
-        imageReader.setOnImageAvailableListener(this::onImageAvailable, captureHandler);
-
-        mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData);
-        mediaProjection.registerCallback(mediaProjectionCallback, null);
+        imageReader.setOnImageAvailableListener(this::onImageAvailable,
+                MyExecutor.getScreenCaptureHandler());
 
         virtualDisplay = mediaProjection.createVirtualDisplay(
                 "ProjectionTest",
@@ -196,7 +242,7 @@ public class ScreenCaptureManager {
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(),
                 virtualDisplayCallback,
-                captureHandler);
+                MyExecutor.getScreenCaptureHandler());
     }
 
     public void stopScreenCaptureInner() {
@@ -223,6 +269,8 @@ public class ScreenCaptureManager {
             public void onStop() {
                 Log.d(TAG, "MediaProjection.Callback: onStop");
                 super.onStop();
+
+                MyExecutor.postMainHandler(() -> stopScreenCapture());
             }
 
             @Override
@@ -269,9 +317,17 @@ public class ScreenCaptureManager {
 
         Image image = reader.acquireLatestImage();
         if (image != null) {
-//            Image.Plane[] planes = image.getPlanes();
-//            Image.Plane plane = planes[0];
+            Image.Plane[] planes = image.getPlanes();
+            Image.Plane plane = planes[0];
+            Bitmap bitmap = Bitmap.createBitmap(
+                    plane.getRowStride() / plane.getPixelStride(),
+                    captureHeight,
+                    Bitmap.Config.ARGB_8888);
+            MyExecutor.postMainHandler(() -> capturedImage = bitmap);
+
             image.close();
         }
+
+        MyExecutor.postMainHandler(() -> setImageAvailable(true));
     }
 }
