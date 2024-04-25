@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">ProjectionTest</string>
+
+    <string name="app_notification_channel_name">ProjectionTest通知</string>
+    <string name="app_notification_channel_description">ProjectionTestはスクリーンキャプチャ状況を通知でお知らせします</string>
+
+    <string name="app_notification_title">スクリーンキャプチャ状況</string>
+    <string name="app_notification_text">キャプチャ中</string>
+    <string name="app_notification_button_settings">設定</string>
+    <string name="app_notification_button_do_snapshot">スナップショット</string>
+
+    <string name="title_start_screen_capture">Start Screen Capture</string>
+    <string name="title_stop_screen_capture">Stop Screen Capture</string>
+    <string name="title_update_external_display_count">Update External Display Count</string>
+
+    <string name="label_total_count">Total Count: </string>
+    <string name="label_presentation_count">Presentation Count: </string>
+</resources>
